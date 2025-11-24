@@ -1,7 +1,7 @@
 // Import React and the useState hook so we can manage component state
 import React, { useState } from 'react';
 // Import useDispatch so we can send actions to Redux
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 // Import the addItem action from our cart slice
 import { addItem } from './CartSlice';
 // Import CSS for styling the product list
@@ -17,6 +17,20 @@ function ProductList({ onHomeClick }) {
   const [addedToCart, setAddedToCart] = useState({});
   // Get the dispatch function so we can send actions to the Redux store
   const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cart.items);
+  // Helper function to calculate the total number of items in the cart
+  const calculateTotalQuantity = () => {
+    // If cartItems exists (not null/undefined), use reduce to sum all item quantities
+    return cartItems
+      ? cartItems.reduce(
+          // For each item in the cart, add its quantity to the running total
+          (total, item) => total + item.quantity,
+          // Start the running total at 0
+          0
+        )
+      // If cartItems is null/undefined, return 0 so the UI shows "0" instead of breaking
+      : 0;
+    };
 
   // Main data: array of plant categories, each with a list of plants
   const plantsArray = [
@@ -334,6 +348,9 @@ function ProductList({ onHomeClick }) {
                     id="mainIconPathAttribute"
                   ></path>
                 </svg>
+                <span className="cart-count">
+                    {calculateTotalQuantity()}
+                </span>
               </h1>
             </a>
           </div>

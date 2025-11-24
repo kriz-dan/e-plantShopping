@@ -1,197 +1,181 @@
-// Import React so we can use JSX and define components
+// Import React so we can define a component and use JSX
 import React from 'react';
-// Import useSelector to read data from Redux, and useDispatch to send actions
+// Import useSelector to read data from the Redux store and useDispatch to send actions
 import { useSelector, useDispatch } from 'react-redux';
-// Import the two actions we need from our CartSlice: removeItem and updateQuantity
-import { removeItem, updateQuantity } from './CartSlice';
-// Import CSS specific to the cart UI
+// Import the cart actions from our CartSlice (make sure the path and names match your slice file)
+import { addItem, updateQuantity, removeItem } from './CartSlice';
+// Import CSS for styling the cart page (optional file; adjust the name if yours is different)
 import './CartItem.css';
 
-// Define the CartItem component
-// It receives one prop: onContinueShopping, which comes from ProductList
-const CartItem = ({ onContinueShopping }) => {
-  // Read the current cart items from Redux store: state.cart.items (as defined in CartSlice)
-  const cart = useSelector((state) => state.cart.items);
-  // Get the dispatch function so we can send actions to Redux (updateQuantity, removeItem)
+// Define the CartItem component, which receives onContinueShopping from the parent (ProductList)
+function CartItem({ onContinueShopping }) {
+  // Get the dispatch function so we can send actions to the Redux store
   const dispatch = useDispatch();
 
-  // Function to calculate the total amount (sum of all item subtotals in the cart)
-  const calculateTotalAmount = () => {
-    // Use reduce to accumulate a running total over the cart array
-    const total = cart.reduce((accumulator, item) => {
-      // Each item.cost is like "$15" so we strip the "$" and convert to a number
-      const price = parseFloat(item.cost.substring(1));
-      // Add current item's price * quantity to the accumulator
-      return accumulator + price * item.quantity;
-    }, 0); // Start accumulator at 0
+  // Read the array of items currently in the cart from the Redux store
+  // state => entire Redux state object
+  // state.cart => the "cart" slice of state (named in configureStore)
+  // state.cart.items => the items array defined in the cart slice's initialState
+  const cartItems = useSelector((state) => state.cart.items);
 
-    // toFixed(2) keeps the number at two decimal places (like 12.34)
-    return total.toFixed(2);
+  // Function to handle increasing the quantity of a specific item
+  // We choose to reuse the addItem action for this so the slice logic decides how to increment
+  const handleIncreaseQuantity = (item) => {
+    // Dispatch addItem with the item; in the slice, it should increase quantity if it already exists
+    dispatch(addItem(item));
   };
 
-  // When user clicks "Continue Shopping" button
-  const handleContinueShopping = (e) => {
-    // Prevent the default form/button navigation behavior
-    e.preventDefault();
-    // Call the function passed from the parent (ProductList) to go back to product grid
-    onContinueShopping(e);
-  };
-
-  // When user clicks the "+" button on a specific cart item
-  const handleIncrement = (item) => {
-    // Dispatch updateQuantity with the same item name but quantity + 1
-    dispatch(
-      updateQuantity({
-        name: item.name,            // identify which item to change
-        quantity: item.quantity + 1 // new quantity
-      })
-    );
-  };
-
-  // When user clicks the "-" button on a specific cart item
-  const handleDecrement = (item) => {
-    // If quantity is more than 1, we just decrease quantity
+  // Function to handle decreasing the quantity of a specific item
+  const handleDecreaseQuantity = (item) => {
+    // If the quantity is greater than 1, we reduce it by 1 using updateQuantity
     if (item.quantity > 1) {
-      // Dispatch updateQuantity with quantity - 1
+      // Dispatch updateQuantity with the item's name and the new quantity
       dispatch(
         updateQuantity({
-          name: item.name,            // identify which item to change
-          quantity: item.quantity - 1 // new quantity
+          name: item.name,           // Identify which cart item to update by its name
+          quantity: item.quantity - 1 // New quantity is old quantity minus 1
         })
       );
     } else {
-      // If quantity is 1, pressing "-" would go to 0, so instead we remove it from the cart
+      // If quantity is 1 and user clicks "-", we remove the item completely from the cart
       dispatch(removeItem(item.name));
     }
   };
 
-  // When user clicks the "Delete" button on a specific cart item
-  const handleRemove = (item) => {
-    // Call removeItem with the item's name (our reducer expects just the name)
+  // Function to remove an item entirely from the cart, regardless of its quantity
+  const handleRemoveItem = (item) => {
+    // Dispatch removeItem using the item's name as the identifier
     dispatch(removeItem(item.name));
   };
 
-  // Compute the subtotal for a single item: price * quantity
-  const calculateTotalCost = (item) => {
-    // Convert "$15" into 15
-    const price = parseFloat(item.cost.substring(1));
-    // Multiply by quantity and fix to 2 decimal places
-    return (price * item.quantity).toFixed(2);
+  // Helper function to calculate the total number of items in the cart
+  const calculateTotalQuantity = () => {
+    // If cartItems exists and is an array, use reduce to sum up all the quantities
+    return cartItems
+      ? cartItems.reduce(
+          // total is the running sum, item is the current cart item
+          (total, item) => total + item.quantity,
+          // Start the total at 0
+          0
+        )
+      // If cartItems is null or undefined, return 0 so we don't crash the UI
+      : 0;
   };
 
-  // Placeholder checkout handler (as per instructions)
-  const handleCheckoutShopping = (e) => {
-    // Prevent default click behavior
-    e.preventDefault();
-    // Show a simple alert to indicate checkout is not implemented yet
-    alert('Functionality to be added for future reference');
+  // Helper function to calculate the total price of all items in the cart
+  const calculateTotalPrice = () => {
+    // If cartItems exists, sum up the cost * quantity for each item
+    return cartItems
+      ? cartItems.reduce((total, item) => {
+          // Each item.cost is a string like "$15", so we remove the "$" and parse the number
+          const numericCost = parseFloat(item.cost.replace('$', ''));
+          // For each item, add price * quantity to the running total
+          return total + numericCost * item.quantity;
+        }, 0)
+      // If cartItems is null or undefined, return 0 as the total price
+      : 0;
   };
 
-  // Return the JSX that builds the cart page UI
+  // Render the cart UI
   return (
-    // Outer container for the entire cart page
+    // Wrapper div for the whole cart page
     <div className="cart-container">
-      {/* Display total amount at top, using our calculateTotalAmount() function */}
-      <h2 style={{ color: 'black' }}>
-        Total Cart Amount: ${calculateTotalAmount()}
-      </h2>
+      {/* Title at the top of the cart page */}
+      <h2>Your Cart</h2>
 
-      {/* Main section that lists each item in the cart */}
-      <div>
-        {/* Map over the cart array; for each item, render a block of UI */}
-        {cart.map((item) => (
-          // One "row" per cart item, key uses item.name (assumes unique per plant)
-          <div className="cart-item" key={item.name}>
-            {/* Product image for this cart item */}
-            <img
-              className="cart-item-image"
-              src={item.image}
-              alt={item.name}
-            />
+      {/* If there are no items in the cart, show an empty-cart message */}
+      {(!cartItems || cartItems.length === 0) && (
+        // Simple message for empty cart
+        <div className="empty-cart">
+          <p>Your cart is empty.</p>
+          {/* Button that lets the user go back to shopping using the parent callback */}
+          <button onClick={onContinueShopping}>Continue Shopping</button>
+        </div>
+      )}
 
-            {/* Right-hand side details: name, cost, quantity controls, subtotal, delete */}
-            <div className="cart-item-details">
-              {/* Plant name */}
-              <div className="cart-item-name">{item.name}</div>
+      {/* If there ARE items in the cart, show them in a list */}
+      {cartItems && cartItems.length > 0 && (
+        // Main content area for the list of cart items and totals
+        <div className="cart-content">
+          {/* List container for all cart items */}
+          <div className="cart-items">
+            {/* Loop over each item in the cartItems array */}
+            {cartItems.map((item) => (
+              // Wrapper div for each individual cart item row
+              <div className="cart-item" key={item.name}>
+                {/* Optional product image if your cart items include image URLs */}
+                {item.image && (
+                  <img
+                    src={item.image}          // Set the image source from the item
+                    alt={item.name}           // Alt text for accessibility
+                    className="cart-item-image" // CSS class for styling the image
+                  />
+                )}
 
-              {/* Unit cost (like "$15") */}
-              <div className="cart-item-cost">{item.cost}</div>
+                {/* Details section for name, description, and cost */}
+                <div className="cart-item-details">
+                  {/* Show the product's name */}
+                  <h3>{item.name}</h3>
+                  {/* Show the product's description if present */}
+                  {item.description && <p>{item.description}</p>}
+                  {/* Show the product's individual cost (e.g., "$15") */}
+                  <p>Price: {item.cost}</p>
+                </div>
 
-              {/* Quantity controls: "-" button, number, "+" button */}
-              <div className="cart-item-quantity">
-                {/* Decrement button */}
-                <button
-                  className="cart-item-button cart-item-button-dec"
-                  onClick={() => handleDecrement(item)}
-                >
-                  -
-                </button>
+                {/* Quantity controls and remove button for this cart item */}
+                <div className="cart-item-actions">
+                  {/* Label for the quantity section */}
+                  <span>Quantity:</span>
+                  {/* Button to decrease the quantity */}
+                  <button
+                    type="button"               // Explicitly set the button type
+                    onClick={() => handleDecreaseQuantity(item)} // Call our decrease handler with this item
+                  >
+                    -
+                  </button>
+                  {/* Display the current quantity of this item */}
+                  <span className="cart-item-quantity">{item.quantity}</span>
+                  {/* Button to increase the quantity */}
+                  <button
+                    type="button"               // Explicitly set the button type
+                    onClick={() => handleIncreaseQuantity(item)} // Call our increase handler with this item
+                  >
+                    +
+                  </button>
 
-                {/* Current quantity value */}
-                <span className="cart-item-quantity-value">
-                  {item.quantity}
-                </span>
-
-                {/* Increment button */}
-                <button
-                  className="cart-item-button cart-item-button-inc"
-                  onClick={() => handleIncrement(item)}
-                >
-                  +
-                </button>
+                  {/* Button to remove the item completely from the cart */}
+                  <button
+                    type="button"               // Explicitly set the button type
+                    className="remove-button"   // CSS class to style the remove button
+                    onClick={() => handleRemoveItem(item)} // Call our remove handler with this item
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-
-              {/* Subtotal for this single item (price * quantity) */}
-              <div className="cart-item-total">
-                Total: ${calculateTotalCost(item)}
-              </div>
-
-              {/* Delete button to remove the item entirely from cart */}
-              <button
-                className="cart-item-delete"
-                onClick={() => handleRemove(item)}
-              >
-                Delete
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Optional extra line where you could also show total amount again */}
-      <div
-        style={{ marginTop: '20px', color: 'black' }}
-        className="total_cart_amount"
-      >
-        Total: ${calculateTotalAmount()}
-      </div>
-
-      {/* Buttons at the bottom: Continue Shopping and Checkout */}
-      <div className="continue_shopping_btn">
-        {/* Goes back to the product listing */}
-        <button
-          className="get-started-button"
-          onClick={handleContinueShopping}
-        >
-          Continue Shopping
-        </button>
-
-        <br />
-
-        {/* Checkout button (placeholder) */}
-        <button
-          className="get-started-button1"
-          onClick={handleCheckoutShopping}
-        >
-          Checkout
-        </button>
-      </div>
+          {/* Summary section showing totals and continue shopping button */}
+          <div className="cart-summary">
+            {/* Show total quantity of items using our helper function */}
+            <p>Total Items: {calculateTotalQuantity()}</p>
+            {/* Show total price of the cart, formatted to two decimal places */}
+            <p>
+              Total Price: ${calculateTotalPrice().toFixed(2)}
+            </p>
+            {/* Button to go back to the product list via the parent callback */}
+            <button onClick={onContinueShopping}>Continue Shopping</button>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
+}
 
-// Export this component so ProductList can import and use it
+// Export the CartItem component so ProductList (or App) can import and use it
 export default CartItem;
+
 
 
 
