@@ -1,138 +1,125 @@
-// Import React so we can create a React component
+// Import React so we can use JSX and define components
 import React from 'react';
-// Import hooks from React-Redux: useSelector reads from the store, useDispatch sends actions
+// Import useSelector to read data from Redux, and useDispatch to send actions
 import { useSelector, useDispatch } from 'react-redux';
-// Import the two actions from our cart slice that we need here
+// Import the two actions we need from our CartSlice: removeItem and updateQuantity
 import { removeItem, updateQuantity } from './CartSlice';
-// Import CSS for styling the cart items
+// Import CSS specific to the cart UI
 import './CartItem.css';
 
-// Define the CartItem component, it receives onContinueShopping from the parent
+// Define the CartItem component
+// It receives one prop: onContinueShopping, which comes from ProductList
 const CartItem = ({ onContinueShopping }) => {
-  // Read the cart items from the Redux store: state.cart.items is defined in our slice
+  // Read the current cart items from Redux store: state.cart.items (as defined in CartSlice)
   const cart = useSelector((state) => state.cart.items);
-  // Get the dispatch function so we can send actions to the Redux store
+  // Get the dispatch function so we can send actions to Redux (updateQuantity, removeItem)
   const dispatch = useDispatch();
 
-  // -----------------------------
-  // 1) TOTAL AMOUNT FOR ALL ITEMS
-  // -----------------------------
+  // Function to calculate the total amount (sum of all item subtotals in the cart)
   const calculateTotalAmount = () => {
-    // Use Array.reduce to accumulate a running total over all items
-    const total = cart.reduce((sumSoFar, item) => {
-      // item.cost is like "$12", so strip the "$" and turn it into a number
+    // Use reduce to accumulate a running total over the cart array
+    const total = cart.reduce((accumulator, item) => {
+      // Each item.cost is like "$15" so we strip the "$" and convert to a number
       const price = parseFloat(item.cost.substring(1));
-      // Add this item's subtotal (price * quantity) to the running total
-      return sumSoFar + price * item.quantity;
-    }, 0); // Start the sum at 0
-    // Return the final numeric total
-    return total;
+      // Add current item's price * quantity to the accumulator
+      return accumulator + price * item.quantity;
+    }, 0); // Start accumulator at 0
+
+    // toFixed(2) keeps the number at two decimal places (like 12.34)
+    return total.toFixed(2);
   };
 
-  // -----------------------------
-  // 2) CONTINUE SHOPPING HANDLER
-  // -----------------------------
+  // When user clicks "Continue Shopping" button
   const handleContinueShopping = (e) => {
-    // Prevent default link/button behavior (like page reload or navigation)
+    // Prevent the default form/button navigation behavior
     e.preventDefault();
-    // Call the function passed from the parent so it can hide the cart and show products
+    // Call the function passed from the parent (ProductList) to go back to product grid
     onContinueShopping(e);
   };
 
-  // -----------------------------
-  // 3) INCREMENT QUANTITY
-  // -----------------------------
+  // When user clicks the "+" button on a specific cart item
   const handleIncrement = (item) => {
-    // Dispatch updateQuantity with the item's name and quantity + 1
+    // Dispatch updateQuantity with the same item name but quantity + 1
     dispatch(
       updateQuantity({
-        name: item.name,          // Identify which item to update
-        quantity: item.quantity + 1 // New quantity is old + 1
+        name: item.name,            // identify which item to change
+        quantity: item.quantity + 1 // new quantity
       })
     );
   };
 
-  // -----------------------------
-  // 4) DECREMENT QUANTITY
-  // -----------------------------
+  // When user clicks the "-" button on a specific cart item
   const handleDecrement = (item) => {
-    // If quantity is greater than 1, just decrease it by 1
+    // If quantity is more than 1, we just decrease quantity
     if (item.quantity > 1) {
+      // Dispatch updateQuantity with quantity - 1
       dispatch(
         updateQuantity({
-          name: item.name,          // Same item name
-          quantity: item.quantity - 1 // New quantity is old - 1
+          name: item.name,            // identify which item to change
+          quantity: item.quantity - 1 // new quantity
         })
       );
     } else {
-      // If quantity would go to 0, remove the item from the cart instead
+      // If quantity is 1, pressing "-" would go to 0, so instead we remove it from the cart
       dispatch(removeItem(item.name));
     }
   };
 
-  // -----------------------------
-  // 5) REMOVE ITEM ENTIRELY
-  // -----------------------------
+  // When user clicks the "Delete" button on a specific cart item
   const handleRemove = (item) => {
-    // Dispatch removeItem with the item's name so it’s filtered out of the array
+    // Call removeItem with the item's name (our reducer expects just the name)
     dispatch(removeItem(item.name));
   };
 
-  // -----------------------------
-  // 6) SUBTOTAL FOR ONE ITEM
-  // -----------------------------
+  // Compute the subtotal for a single item: price * quantity
   const calculateTotalCost = (item) => {
-    // Get numeric price by stripping the "$" and parsing as float
+    // Convert "$15" into 15
     const price = parseFloat(item.cost.substring(1));
-    // Multiply unit price by quantity to get subtotal for this item
-    return price * item.quantity;
+    // Multiply by quantity and fix to 2 decimal places
+    return (price * item.quantity).toFixed(2);
   };
 
-  // -----------------------------
-  // 7) OPTIONAL: CHECKOUT HANDLER
-  // -----------------------------
+  // Placeholder checkout handler (as per instructions)
   const handleCheckoutShopping = (e) => {
-    // Prevent default behavior
+    // Prevent default click behavior
     e.preventDefault();
-    // Just show an alert for now, per the lab instructions
+    // Show a simple alert to indicate checkout is not implemented yet
     alert('Functionality to be added for future reference');
   };
 
-  // -----------------------------
-  // JSX TO RENDER THE CART
-  // -----------------------------
+  // Return the JSX that builds the cart page UI
   return (
-    // Outer container for the whole cart page
+    // Outer container for the entire cart page
     <div className="cart-container">
-      {/* Heading that shows total amount for all items in the cart */}
+      {/* Display total amount at top, using our calculateTotalAmount() function */}
       <h2 style={{ color: 'black' }}>
         Total Cart Amount: ${calculateTotalAmount()}
       </h2>
 
-      {/* Wrapper for the list of cart items */}
+      {/* Main section that lists each item in the cart */}
       <div>
-        {/* Loop over every item in the cart array */}
+        {/* Map over the cart array; for each item, render a block of UI */}
         {cart.map((item) => (
-          // Root div for a single cart item card
+          // One "row" per cart item, key uses item.name (assumes unique per plant)
           <div className="cart-item" key={item.name}>
-            {/* Item image on the left */}
+            {/* Product image for this cart item */}
             <img
               className="cart-item-image"
               src={item.image}
               alt={item.name}
             />
 
-            {/* Right side: details and controls */}
+            {/* Right-hand side details: name, cost, quantity controls, subtotal, delete */}
             <div className="cart-item-details">
-              {/* Item name */}
+              {/* Plant name */}
               <div className="cart-item-name">{item.name}</div>
 
-              {/* Unit cost, e.g., "$12" */}
+              {/* Unit cost (like "$15") */}
               <div className="cart-item-cost">{item.cost}</div>
 
-              {/* Quantity controls: -, current quantity, + */}
+              {/* Quantity controls: "-" button, number, "+" button */}
               <div className="cart-item-quantity">
-                {/* Decrement button calls handleDecrement with this item */}
+                {/* Decrement button */}
                 <button
                   className="cart-item-button cart-item-button-dec"
                   onClick={() => handleDecrement(item)}
@@ -140,12 +127,12 @@ const CartItem = ({ onContinueShopping }) => {
                   -
                 </button>
 
-                {/* Show the current quantity value */}
+                {/* Current quantity value */}
                 <span className="cart-item-quantity-value">
                   {item.quantity}
                 </span>
 
-                {/* Increment button calls handleIncrement with this item */}
+                {/* Increment button */}
                 <button
                   className="cart-item-button cart-item-button-inc"
                   onClick={() => handleIncrement(item)}
@@ -154,12 +141,12 @@ const CartItem = ({ onContinueShopping }) => {
                 </button>
               </div>
 
-              {/* Subtotal for this item (price * quantity) */}
+              {/* Subtotal for this single item (price * quantity) */}
               <div className="cart-item-total">
                 Total: ${calculateTotalCost(item)}
               </div>
 
-              {/* Delete button removes the item from the cart completely */}
+              {/* Delete button to remove the item entirely from cart */}
               <button
                 className="cart-item-delete"
                 onClick={() => handleRemove(item)}
@@ -171,26 +158,40 @@ const CartItem = ({ onContinueShopping }) => {
         ))}
       </div>
 
-      {/* Extra div where they might inject total via JS/CSS (left as-is for lab) */}
+      {/* Optional extra line where you could also show total amount again */}
       <div
         style={{ marginTop: '20px', color: 'black' }}
         className="total_cart_amount"
-      ></div>
+      >
+        Total: ${calculateTotalAmount()}
+      </div>
 
-      {/* Buttons under the cart: Continue Shopping + Checkout */}
+      {/* Buttons at the bottom: Continue Shopping and Checkout */}
       <div className="continue_shopping_btn">
-        {/* Call our continue shopping handler when clicked */}
+        {/* Goes back to the product listing */}
         <button
           className="get-started-button"
-          onClick={(e) => handleContinueShopping(e)}
+          onClick={handleContinueShopping}
         >
           Continue Shopping
         </button>
+
         <br />
-        {/* Checkout button just shows an alert for now */}
+
+        {/* Checkout button (placeholder) */}
         <button
           className="get-started-button1"
-          onClick={(e) =>
+          onClick={handleCheckoutShopping}
+        >
+          Checkout
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Export this component so ProductList can import and use it
+export default CartItem;
 
 
 
