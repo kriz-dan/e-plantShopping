@@ -1,23 +1,69 @@
-import { createSlice } from '@reduxjs/toolkit';
+// Import the createSlice helper from Redux Toolkit
+import { createSlice } from '@reduxjs/toolkit';  // Gives us an easy way to create a slice with reducers and actions
 
-export const CartSlice = createSlice({
-  name: 'cart',
-  initialState: {
-    items: [], // Initialize items as an empty array
-  },
-  reducers: {
-    addItem: (state, action) => {
-    
-    },
-    removeItem: (state, action) => {
-    },
-    updateQuantity: (state, action) => {
+// Define the initial shape/state of this slice
+const initialState = {                             // The cart slice state starts as an object
+  items: []                                        // `items` will be an array of plant objects in the cart
+};                                                 // Each item will typically have: name, image, description, cost, quantity
 
-    
-    },
-  },
-});
+// Create the cart slice using Redux Toolkit
+const cartSlice = createSlice({                    // createSlice generates actions + reducer for us
+  name: 'cart',                                    // Name of the slice (used in action types like "cart/addItem")
+  initialState,                                    // Use the initialState we defined above
+  reducers: {                                      // `reducers` is an object with our reducer functions
 
-export const { addItem, removeItem, updateQuantity } = CartSlice.actions;
+    // === addItem reducer ===
+    addItem: (state, action) => {                  // Reducer to add a plant to the cart; `state` is current cart, `action` carries the plant
+      const newPlant = action.payload;             // Extract the plant object that was dispatched from handleAddToCart(plant)
 
-export default CartSlice.reducer;
+      // Try to find if this plant is already in the cart based on its name
+      const existingItem = state.items.find(       // Look through `state.items` (cart array)
+        (item) => item.name === newPlant.name      // Find an item where the name matches the new plant's name
+      );                                           // If none is found, existingItem will be undefined
+
+      if (existingItem) {                          // If the plant is already in the cart
+        existingItem.quantity += 1;                // Just increase its quantity by 1
+      } else {                                     // If the plant is NOT in the cart yet
+        state.items.push({                         // Add a new entry to the `items` array
+          ...newPlant,                             // Spread all existing properties from the plant (name, image, description, cost)
+          quantity: 1                              // Start its quantity at 1
+        });                                        // Now the cart has this new plant as an item
+      }                                            // End of if/else
+    },                                             // End of addItem reducer
+
+    // === removeItem reducer ===
+    removeItem: (state, action) => {               // Reducer to remove an item from the cart
+      const nameToRemove = action.payload;         // Expect the payload to be the `name` of the plant we want to remove
+
+      // Filter out any items where the name matches the one we want to remove
+      state.items = state.items.filter(            // Replace `state.items` with a filtered version
+        (item) => item.name !== nameToRemove       // Keep only items whose name does NOT match nameToRemove
+      );                                           // This effectively removes the target item from the cart
+    },                                             // End of removeItem reducer
+
+    // === updateQuantity reducer ===
+    updateQuantity: (state, action) => {           // Reducer to update the quantity of a given item
+      const { name, quantity } = action.payload;   // Destructure the product name and new quantity from the action payload
+
+      // Find the item in the cart that matches the given name
+      const itemToUpdate = state.items.find(       // Look through current cart items
+        (item) => item.name === name               // Match by name
+      );                                           // If not found, itemToUpdate is undefined
+
+      if (itemToUpdate) {                          // Only update if we actually found a matching item
+        itemToUpdate.quantity = quantity;          // Set the item's quantity to the new value from the payload
+      }                                            // If no item is found, nothing happens (no crash)
+    }                                              // End of updateQuantity reducer
+  }                                                // End of reducers object
+});                                                // End of createSlice call
+
+// Export the generated action creators so components can dispatch them
+export const {                                     // Use object destructuring to pull out each action
+  addItem,                                         // Action creator for adding an item to the cart
+  removeItem,                                      // Action creator for removing an item from the cart
+  updateQuantity                                   // Action creator for changing the quantity of an item
+} = cartSlice.actions;                             // All actions generated by createSlice live on cartSlice.actions
+
+// Export the reducer function as the default export for use in the Redux store
+export default cartSlice.reducer;                  // This reducer will be combined in store.js under the key 'cart' (or similar)
+
